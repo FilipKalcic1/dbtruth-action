@@ -1,0 +1,164 @@
+# The scripts with a fake gh and npx; then the action itself, run four ways on dbtruth's fixture database; then the log
+# of those runs, read back through the API, for the password.
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # The dbtruth commit the scenarios build, pack and run, and whose fixture they load.
+  DBTRUTH_REF: 0000000000000000000000000000000000000000
+
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: shellcheck scripts/*.sh test/*.sh
+      - run: bash test/scripts.test.sh
+      - name: Every message the scripts print has a row in README.md
+        run: |
+          grep -ohE '::(notice|warning|error)::[^"]+' scripts/*.sh | cut -d: -f5- | while IFS= read -r message; do
+            grep -qF -- "$message" README.md || { echo "not in README.md: $message"; exit 1; }
+          done
+
+  scenarios:
+    runs-on: ubuntu-latest
+    # The fail scenario comments on the test pull request.
+    permissions:
+      contents: read
+      pull-requests: write
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dbtruth
+          POSTGRES_PASSWORD: dbtruth
+          POSTGRES_DB: fixture
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U dbtruth -d fixture"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      OWNER: postgres://dbtruth:dbtruth@localhost:54329/fixture
+      READER: postgres://reader:reader@localhost:54329/fixture
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: FilipKalcic1/dbtruth
+          ref: ${{ env.DBTRUTH_REF }}
+          path: dbtruth
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Pack dbtruth, load its fixture, and write a context/ for it without a model
+        id: dbtruth
+        working-directory: dbtruth
+        run: |
+          npm ci
+          npm run build
+          echo "tarball=$RUNNER_TEMP/$(npm pack --pack-destination "$RUNNER_TEMP")" >> "$GITHUB_OUTPUT"
+          psql -v ON_ERROR_STOP=1 --no-psqlrc "$OWNER" -f test/fixtures/seed.sql
+          DATABASE_URL=$READER node --import tsx scripts/make-fixture-snapshot.mjs "$RUNNER_TEMP/project"
+
+      - id: pass
+        uses: ./
+        with:
+          database-url: ${{ env.READER }}
+          working-directory: ${{ runner.temp }}/project
+          dbtruth-version: file:${{ steps.dbtruth.outputs.tarball }}
+          comment: never
+      - name: An unchanged database passes
+        env:
+          GOT: ${{ steps.pass.outcome }} ${{ steps.pass.outputs.result }} ${{ steps.pass.outputs.regressions }} ${{ steps.pass.outputs.stale }}
+        run: |
+          echo "$GOT"
+          [ "$GOT" = "success pass 0 0" ]
+
+      - name: Break the join from order_items to orders, as dbtruth's own regression test does
+        run: |
+          psql -v ON_ERROR_STOP=1 --no-psqlrc "$OWNER" -c "ALTER TABLE order_items DROP CONSTRAINT order_items_order_id_fkey"
+          psql -v ON_ERROR_STOP=1 --no-psqlrc "$OWNER" -c "UPDATE order_items SET order_id = order_id + 1000 WHERE id % 5 = 0"
+      - id: fail
+        uses: ./
+        continue-on-error: true
+        with:
+          database-url: ${{ env.READER }}
+          working-directory: ${{ runner.temp }}/project
+          dbtruth-version: file:${{ steps.dbtruth.outputs.tarball }}
+      - name: A regression fails, and the comment starts with the marker and names it
+        env:
+          GOT: ${{ steps.fail.outcome }} ${{ steps.fail.outputs.result }} ${{ steps.fail.outputs.regressions }} ${{ steps.fail.outputs.stale }}
+          ROW: "| regression | ` relationship:order_items.order_id->orders.id ` | confirmed 100.0% | broken 80.0% |"
+        run: |
+          echo "$GOT"
+          [ "$GOT" = "failure fail 1 0" ]
+          [ "$(head -n 1 "$RUNNER_TEMP/dbtruth.md")" = "<!-- dbtruth-check -->" ]
+          grep -qxF "$ROW" "$RUNNER_TEMP/dbtruth.md"
+
+      - id: skipped
+        uses: ./
+        with:
+          database-url: ""
+          working-directory: ${{ runner.temp }}/project
+          dbtruth-version: file:${{ steps.dbtruth.outputs.tarball }}
+      - name: No database URL is skipped, and passes
+        env:
+          GOT: ${{ steps.skipped.outcome }} ${{ steps.skipped.outputs.result }}
+        run: |
+          echo "$GOT"
+          [ "$GOT" = "success skipped" ]
+
+      - name: A URL with a wrong password, masked as GitHub masks a secret
+        run: |
+          url="postgres://reader:$(printf '%s-%s' canary-pii wrong)@localhost:54329/fixture"
+          echo "::add-mask::$url"
+          echo "WRONG_URL=$url" >> "$GITHUB_ENV"
+      - id: error
+        uses: ./
+        continue-on-error: true
+        with:
+          database-url: ${{ env.WRONG_URL }}
+          working-directory: ${{ runner.temp }}/project
+          dbtruth-version: file:${{ steps.dbtruth.outputs.tarball }}
+          comment: never
+      - name: A check that cannot run is an error, and no file it wrote holds the password
+        env:
+          GOT: ${{ steps.error.outcome }} ${{ steps.error.outputs.result }}
+        run: |
+          echo "$GOT"
+          [ "$GOT" = "failure error" ]
+          grep -qF "authentication failed" "$RUNNER_TEMP/dbtruth.err"
+          pw=$(printf '%s-%s' canary-pii wrong)
+          if grep -qF "$pw" "$RUNNER_TEMP"/dbtruth.*; then echo "the password is in a file the action wrote"; exit 1; fi
+
+  log:
+    needs: scenarios
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: The scenarios job's log holds dbtruth's error and not the password
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" --jq '.jobs[] | select(.name == "scenarios") | .id')
+          # A job's log can take a few seconds to be ready once the job has finished.
+          for try in 1 2 3 4 5; do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$id/logs" > log.txt; then break; fi
+            if [ "$try" = 5 ]; then exit 1; fi
+            sleep 5
+          done
+          # dbtruth's own line: the log prints each step's script too, and the error step's holds "authentication failed".
+          grep -qF "dbtruth: could not connect to the database: authentication failed" log.txt
+          pw=$(printf '%s-%s' canary-pii wrong)
+          if grep -qF "$pw" log.txt; then echo "the password is in the log"; exit 1; fi

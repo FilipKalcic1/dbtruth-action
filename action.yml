@@ -1,0 +1,54 @@
+name: dbtruth check
+description: Measures again, on each pull request, what dbtruth's context/ claims about your database, and comments what moved.
+branding:
+  icon: database
+  color: blue
+
+inputs:
+  database-url:
+    description: "The database to check, from a secret: postgres://user:password@host:5432/dbname, for a role that can only read. Empty, as it is on a pull request from a fork, skips the check."
+    required: true
+  working-directory:
+    description: The directory that holds context/, relative to the root of the checkout. dbtruth check runs there.
+    default: .
+  fail-on:
+    description: "When the job fails: regression, on a regression or a stale item; change, on any change; never."
+    default: regression
+  comment:
+    description: "on-change creates the comment on the first run that finds an item that is not unchanged, or cannot run; always on the first run. Both update it on every run after that. never leaves the pull request alone."
+    default: on-change
+  dbtruth-version:
+    description: The dbtruth to run, a version or anything else npm takes after dbtruth@.
+    default: 0.3.0
+
+outputs:
+  result:
+    description: "pass, fail (check exited 2), error (check could not run, or an input is wrong), or skipped (database-url was empty). Empty when the step did not start, as on a working-directory that does not exist."
+    value: ${{ steps.check.outputs.result }}
+  regressions:
+    description: How many regressions check found; empty unless the result is pass or fail.
+    value: ${{ steps.check.outputs.regressions }}
+  stale:
+    description: How many stale items check found, claims that name a table or column that is gone and relations added or dropped; empty unless the result is pass or fail.
+    value: ${{ steps.check.outputs.stale }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 22
+        package-manager-cache: false
+    - id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DATABASE_URL: ${{ inputs.database-url }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        COMMENT: ${{ inputs.comment }}
+        PACKAGE: dbtruth@${{ inputs.dbtruth-version }}
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+        # npm's notice of a newer npm would land in the comment of a check that could not run.
+        npm_config_update_notifier: "false"
+      run: bash "$GITHUB_ACTION_PATH/scripts/check.sh"
