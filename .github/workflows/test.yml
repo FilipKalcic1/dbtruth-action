@@ -152,9 +152,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" --jq '.jobs[] | select(.name == "scenarios") | .id')
-          # A job's log can take a few seconds to be ready once the job has finished.
+          # A job's log can take a few seconds to be ready once the job has finished. curl, not gh api: gh refuses to
+          # print a log that holds terminal escape sequences, as every colored log does. The endpoint redirects to a
+          # signed address on another host, where curl does not send the token.
           for try in 1 2 3 4 5; do
-            if gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$id/logs" > log.txt; then break; fi
+            if curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/jobs/$id/logs" -o log.txt; then break; fi
             if [ "$try" = 5 ]; then exit 1; fi
             sleep 5
           done
