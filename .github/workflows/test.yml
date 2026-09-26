@@ -1,5 +1,5 @@
-# The scripts with a fake gh and npx; then the action itself, run five ways, once with the dbtruth-version a user gets by default on dbtruth's fixture database; then the log
-# of those runs, read back through the API, for the password.
+# The scripts with a fake gh and npx; then the action itself, run five ways on dbtruth's fixture database, once with the
+# dbtruth-version a user gets by default; then the log of those runs, read back through the API, for the password.
 name: test
 
 on:
