@@ -1,4 +1,4 @@
-# The scripts with a fake gh and npx; then the action itself, run four ways on dbtruth's fixture database; then the log
+# The scripts with a fake gh and npx; then the action itself, run five ways, once with the dbtruth-version a user gets by default on dbtruth's fixture database; then the log
 # of those runs, read back through the API, for the password.
 name: test
 
@@ -79,6 +79,19 @@ jobs:
       - name: An unchanged database passes
         env:
           GOT: ${{ steps.pass.outcome }} ${{ steps.pass.outputs.result }} ${{ steps.pass.outputs.regressions }} ${{ steps.pass.outputs.stale }}
+        run: |
+          echo "$GOT"
+          [ "$GOT" = "success pass 0 0" ]
+
+      - id: default
+        uses: ./
+        with:
+          database-url: ${{ env.READER }}
+          working-directory: ${{ runner.temp }}/project
+          comment: never
+      - name: The dbtruth-version a user gets by default, from npm, passes it too
+        env:
+          GOT: ${{ steps.default.outcome }} ${{ steps.default.outputs.result }} ${{ steps.default.outputs.regressions }} ${{ steps.default.outputs.stale }}
         run: |
           echo "$GOT"
           [ "$GOT" = "success pass 0 0" ]
