@@ -50,7 +50,7 @@ runs never race to create two comments.
 | `working-directory` | `.` | The directory that holds `context/`, relative to the root of the checkout; `check` runs there. In a monorepo, the directory `npx dbtruth` ran in. |
 | `fail-on` | `regression` | When the job fails, as `check --fail-on` takes it: `regression` on a regression or a stale item, `change` on any change, `never` not at all. |
 | `comment` | `on-change` | `on-change` creates the comment on the first run that finds an item that is not unchanged, or cannot run; `always` on the first run. Both update it on every run after that. `never` leaves the pull request alone. |
-| `dbtruth-version` | `0.3.0` | The dbtruth to run: a version, or anything else npm takes after `dbtruth@`, such as a range. 0.3.0 is the first with the `--json` and `--markdown` of `check`, which the Action needs. |
+| `dbtruth-version` | `0.4.0` | The dbtruth to run: a version, or anything else npm takes after `dbtruth@`, such as a range. 0.4.0 is the first with the `--json` and `--markdown` of `check`, which the Action needs. |
 
 dbtruth's tunables are `DBTRUTH_*` variables
 ([Tuning](https://github.com/FilipKalcic1/dbtruth#tuning)). Set them in the
@@ -195,7 +195,7 @@ GitHub's hosted runners have both, and a self-hosted runner needs them
 installed. It is not tested on Windows or macOS runners, or on GitHub
 Enterprise Server.
 
-`v1` runs dbtruth 0.3.0 unless `dbtruth-version` says otherwise. The `v1` tag
+`v1` runs dbtruth 0.4.0 unless `dbtruth-version` says otherwise. The `v1` tag
 moves to each 1.x release of this Action; to fix one, use its commit SHA, as
 the usage does for checkout.
 
@@ -213,4 +213,4 @@ goes. Every other line in the step's log is dbtruth's own, and is in
 | `this dbtruth-version prints a report this action cannot read; leave dbtruth-version at its default` | `check` ran, but what it printed on stdout is not a report in the format this Action reads: `dbtruth-version` names a dbtruth newer than this Action. `result` is `error`, and the job fails. Leave `dbtruth-version` out, or use the release of this Action made for that dbtruth. |
 | `gh, the GitHub CLI, is not on this runner's PATH: install it, or set comment: never` | A self-hosted runner without gh, on a pull request, where the Action looks for its comment. The check ran, its lines are above this one and `result` is set, but the job fails. Install gh, or set `comment: never`. |
 | `could not comment on the pull request; gh's line above says why, and HTTP 403 means the workflow needs permissions: pull-requests: write` | A warning: GitHub refused to list, create or update the comment, and the job's result is still the check's. gh's line above gives GitHub's reason. `HTTP 403` with `Resource not accessible by integration`: add `pull-requests: write` under the workflow's `permissions:`. On a locked conversation GitHub can refuse the comment too; unlock it, or read the job log. `HTTP 422`: GitHub refused the body, such as one too long; the Action cuts a body over 65,536 bytes before it sends it, and the job log has every line. |
-| `npm error notarget No matching version found for dbtruth@<version>.`<br>`npm error 404  'dbtruth@<version>' is not in this registry.` | npm could not install dbtruth, so `check` did not run: `result` is `error`, and the comment says it could not run, with npm's lines. `notarget`: npm has no dbtruth of that version, because `dbtruth-version` is misspelled or names a version not published yet, such as 0.3.0 before its release; `npm view dbtruth versions` lists them. `404`: the registry npm asks has no dbtruth at all, because an `.npmrc` in the working directory or on the runner points npm at a registry of its own; add dbtruth to it, or point npm at `https://registry.npmjs.org/`. A dbtruth older than 0.3.0 installs, then stops with `error: unknown option '--fail-on'`: it has no `check`. |
+| `npm error notarget No matching version found for dbtruth@<version>.`<br>`npm error 404  'dbtruth@<version>' is not in this registry.` | npm could not install dbtruth, so `check` did not run: `result` is `error`, and the comment says it could not run, with npm's lines. `notarget`: npm has no dbtruth of that version, because `dbtruth-version` is misspelled or names a version that is not on npm, such as 0.3.0, which was never published; `npm view dbtruth versions` lists them. `404`: the registry npm asks has no dbtruth at all, because an `.npmrc` in the working directory or on the runner points npm at a registry of its own; add dbtruth to it, or point npm at `https://registry.npmjs.org/`. A dbtruth older than 0.4.0 installs, then stops with `error: unknown option '--fail-on'`: it has no `check`. |

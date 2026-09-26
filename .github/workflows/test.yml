@@ -11,7 +11,7 @@ permissions:
 
 env:
   # The dbtruth commit the scenarios build, pack and run, and whose fixture they load.
-  DBTRUTH_REF: a4de4debc0093e19ea1b3021a59f1c3fca6b2402
+  DBTRUTH_REF: 2d571c767c99705ac26b79f7af134f3b290cd6f6
 
 jobs:
   scripts:

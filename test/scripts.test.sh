@@ -114,7 +114,7 @@ step() { # step <url> <comment> <fake code> <fake json> <summary>: the outputs, 
   : > "$dir/output"
   local code=0
   env DATABASE_URL="$1" COMMENT="$2" FAKE_CODE="$3" FAKE_JSON="$4" FAKE_SUMMARY="${5:-}" FAIL_ON=regression \
-    PACKAGE=dbtruth@0.3.0 GITHUB_OUTPUT="$dir/output" RUNNER_TEMP="$dir/temp" GITHUB_ACTION_PATH="$root" \
+    PACKAGE=dbtruth@0.4.0 GITHUB_OUTPUT="$dir/output" RUNNER_TEMP="$dir/temp" GITHUB_ACTION_PATH="$root" \
     GITHUB_EVENT_NAME="${EVENT:-pull_request}" GITHUB_SERVER_URL=https://github.com GITHUB_RUN_ID=42 \
     bash "$root/scripts/check.sh" > "$dir/stdout" 2> "$dir/stderr" || code=$?
   echo "exit $code: $(sort "$dir/output" | tr '\n' ' ')"
