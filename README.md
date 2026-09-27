@@ -13,6 +13,16 @@ It needs `context/` committed with its `snapshot.json`, which every full run
 of `npx dbtruth` writes, and a database the runner can reach that holds the
 data the context describes. It needs no model and no API key.
 
+This Action is the third of [dbtruth's three steps](https://github.com/FilipKalcic1/dbtruth#in-three-steps):
+measure the database, give the context to your agent, and keep it true on
+every pull request.
+
+![The comment on a pull request that broke a join](docs/comment.png)
+
+It is free on public repositories. On private repositories it is free during
+the beta; once dbtruth's [Team tier](https://github.com/FilipKalcic1/dbtruth#team-tier) opens, a private repository
+will need a license key.
+
 ## Usage
 
 Add a workflow such as `.github/workflows/dbtruth.yml`:
