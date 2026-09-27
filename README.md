@@ -224,3 +224,10 @@ goes. Every other line in the step's log is dbtruth's own, and is in
 | `gh, the GitHub CLI, is not on this runner's PATH: install it, or set comment: never` | A self-hosted runner without gh, on a pull request, where the Action looks for its comment. The check ran, its lines are above this one and `result` is set, but the job fails. Install gh, or set `comment: never`. |
 | `could not comment on the pull request; gh's line above says why, and HTTP 403 means the workflow needs permissions: pull-requests: write` | A warning: GitHub refused to list, create or update the comment, and the job's result is still the check's. gh's line above gives GitHub's reason. `HTTP 403` with `Resource not accessible by integration`: add `pull-requests: write` under the workflow's `permissions:`. On a locked conversation GitHub can refuse the comment too; unlock it, or read the job log. `HTTP 422`: GitHub refused the body, such as one too long; the Action cuts a body over 65,536 bytes before it sends it, and the job log has every line. |
 | `npm error notarget No matching version found for dbtruth@<version>.`<br>`npm error 404  'dbtruth@<version>' is not in this registry.` | npm could not install dbtruth, so `check` did not run: `result` is `error`, and the comment says it could not run, with npm's lines. `notarget`: npm has no dbtruth of that version, because `dbtruth-version` is misspelled or names a version that is not on npm, such as 0.3.0, which was never published; `npm view dbtruth versions` lists them. `404`: the registry npm asks has no dbtruth at all, because an `.npmrc` in the working directory or on the runner points npm at a registry of its own; add dbtruth to it, or point npm at `https://registry.npmjs.org/`. A dbtruth older than 0.4.0 installs, then stops with `error: unknown option '--fail-on'`: it has no `check`. |
+
+## License
+
+Free to use for any purpose, at work included, except to provide a product
+that competes with dbtruth or this Action: the
+[PolyForm Shield License 1.0.0](LICENSE). v1.0.0 was released under the MIT
+License, which still applies to it.
