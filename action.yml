@@ -19,7 +19,7 @@ inputs:
     default: on-change
   dbtruth-version:
     description: The dbtruth to run, a version or anything else npm takes after dbtruth@.
-    default: 0.4.0
+    default: 0.4.1
 
 outputs:
   result:

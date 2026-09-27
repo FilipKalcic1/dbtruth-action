@@ -60,7 +60,7 @@ runs never race to create two comments.
 | `working-directory` | `.` | The directory that holds `context/`, relative to the root of the checkout; `check` runs there. In a monorepo, the directory `npx dbtruth` ran in. |
 | `fail-on` | `regression` | When the job fails, as `check --fail-on` takes it: `regression` on a regression or a stale item, `change` on any change, `never` not at all. |
 | `comment` | `on-change` | `on-change` creates the comment on the first run that finds an item that is not unchanged, or cannot run; `always` on the first run. Both update it on every run after that. `never` leaves the pull request alone. |
-| `dbtruth-version` | `0.4.0` | The dbtruth to run: a version, or anything else npm takes after `dbtruth@`, such as a range. 0.4.0 is the first with the `--json` and `--markdown` of `check`, which the Action needs. |
+| `dbtruth-version` | `0.4.1` | The dbtruth to run: a version, or anything else npm takes after `dbtruth@`, such as a range. 0.4.0 is the first with the `--json` and `--markdown` of `check`, which the Action needs. |
 
 dbtruth's tunables are `DBTRUTH_*` variables
 ([Tuning](https://github.com/FilipKalcic1/dbtruth#tuning)). Set them in the
@@ -205,7 +205,7 @@ GitHub's hosted runners have both, and a self-hosted runner needs them
 installed. It is not tested on Windows or macOS runners, or on GitHub
 Enterprise Server.
 
-`v1` runs dbtruth 0.4.0 unless `dbtruth-version` says otherwise. The `v1` tag
+`v1` runs dbtruth 0.4.1 unless `dbtruth-version` says otherwise. The `v1` tag
 moves to each 1.x release of this Action; to fix one, use its commit SHA, as
 the usage does for checkout.
 
